@@ -1,6 +1,6 @@
 # 🌸 Pixel Garden Simulator
 
-A cozy, kawaii pixel-style garden simulator (inspired by Pixels.xyz) with harvesting, an inventory, a market and a world map. It is also a data-structures project: see "DSA assignment guide" below for where each topic lives in the code.
+A cozy, kawaii pixel-style garden simulator with harvesting, an inventory, a market and a world map. It is also a data-structures project: see "DSA assignment guide" below for where each topic lives in the code.
 
 ## Files
 
