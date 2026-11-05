@@ -1,0 +1,371 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Pixel Garden Simulator</title>
+
+  <!-- Cute pixel font (falls back to monospace if offline) -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Pixelify+Sans:wght@400;600&display=swap" rel="stylesheet">
+
+  <link rel="stylesheet" href="pixel-theme.css">
+</head>
+
+<body data-season="Spring" data-phase="Day">
+
+  <!-- [Page structure] — Pixel Garden Simulator — this file is only the empty skeleton. script.js (GardenUI) finds elements by id, fills them in and redraws them; do not rename an id without changing script.js. Most panels start hidden. -->
+  <main class="game">
+
+    <h1 class="sr-only">Pixel Garden</h1> <!-- hidden title, for screen readers -->
+    <p id="sr-message" class="sr-only" role="status" aria-live="polite"></p> <!-- reads out game messages -->
+
+    <!-- ========== Top bar: small menu buttons (left) and player status (right) ========== -->
+    <header class="topbar">
+
+      <nav class="topbar-group topbar-left" aria-label="Menus">
+        <button id="btn-time" class="chip" type="button" aria-expanded="false" aria-controls="panel-time"
+          title="Time &amp; Season">
+          <span id="chip-time-icon" class="chip-icon" aria-hidden="true">🌼🌞</span><span id="chip-time"
+            class="chip-text">Day 1</span>
+        </button>
+        <button id="btn-controls" class="chip" type="button" aria-expanded="false" aria-controls="panel-controls"
+          title="Controls" aria-label="Controls">
+          <span class="chip-icon" aria-hidden="true">⚙️</span><span class="chip-text chip-text--wide">Controls</span>
+        </button>
+        <button id="btn-history" class="chip" type="button" aria-expanded="false" aria-controls="panel-history"
+          title="Today's Actions" aria-label="Today's Actions">
+          <span class="chip-icon" aria-hidden="true">📜</span><span class="chip-text chip-text--wide">Actions</span>
+          <span id="chip-history" class="chip-count" aria-hidden="true">0</span>
+        </button>
+        <button id="btn-gardener" class="chip" type="button" aria-expanded="false" aria-controls="panel-gardener"
+          title="Gardener" aria-label="Gardener">
+          <span class="chip-icon" aria-hidden="true">🧺</span><span class="chip-text chip-text--wide">Gardener</span>
+        </button>
+        <button id="btn-crops" class="chip" type="button" aria-expanded="false" aria-controls="panel-crops"
+          title="Crop Guide" aria-label="Crop Guide">
+          <span class="chip-icon" aria-hidden="true">🌱</span><span class="chip-text chip-text--wide">Crops</span>
+        </button>
+      </nav>
+
+      <div class="topbar-group topbar-right" role="group" aria-label="Player status">
+        <div class="stat" title="Coins">
+          <span class="hud-icon" data-icon="coin"></span>
+          <b id="hud-coins">0</b>
+        </div>
+        <div class="stat stat--energy" title="Energy: every plant, water and harvest costs 1. Sleep or eat to refill.">
+          <span class="hud-icon" data-icon="energy"></span>
+          <div class="bar"><i id="hud-energy-bar"></i></div>
+          <b id="hud-energy-text">20/20</b>
+        </div>
+        <div class="stat stat--level" title="Farming level: higher levels unlock better seeds at the market.">
+          <b id="hud-level">Lv 1</b>
+          <div class="bar bar--xp"><i id="hud-xp-bar"></i></div>
+          <small id="hud-xp-text">0/30 XP</small>
+        </div>
+        <button id="btn-back" class="chip chip--action" type="button" title="⬅ Back (no previous place yet)"
+          aria-label="Back: no previous place yet" disabled>
+          <span class="chip-icon" aria-hidden="true">⬅</span><span class="chip-text chip-text--wide">Back</span>
+        </button>
+        <button id="btn-map" class="chip chip--action" type="button" title="Map (M)" aria-label="Map (M)">
+          <span class="chip-icon" aria-hidden="true">🗺</span><span class="chip-text chip-text--wide">Map (M)</span>
+        </button>
+        <button id="btn-pack" class="chip chip--action" type="button" title="Backpack (B)" aria-label="Backpack (B)">
+          <span class="chip-icon" aria-hidden="true">🎒</span><span class="chip-text chip-text--wide">Backpack
+            (B)</span>
+        </button>
+      </div>
+
+      <!-- Floating panels: only one is open at a time (click its button again, click outside, or press Esc to close) -->
+      <section id="panel-time" class="panel float-panel" aria-label="Time and season" hidden>
+        <h2 class="tag">Time &amp; Season</h2>
+        <div class="time-row">
+          <div id="season-face"></div>
+          <div class="time-info">
+            <div class="time-day">DAY <b id="status-day">1</b></div>
+            <div id="status-season">Spring</div>
+            <div id="status-phase">Day</div>
+          </div>
+        </div>
+        <p class="mascot-name" id="season-mascot"></p>
+      </section>
+
+      <section id="panel-controls" class="panel float-panel" aria-label="Controls" hidden>
+        <h2 class="tag">Controls</h2>
+        <div class="button-row">
+          <button id="btn-day" class="btn" type="button">🛏 Sleep (N)</button>
+          <button id="btn-phase" class="btn" type="button">🌙 Day/Night (T)</button>
+          <button id="btn-undo" class="btn" type="button">↶ Undo (U)</button>
+          <button id="btn-new" class="btn btn--quiet" type="button">New game</button>
+        </div>
+        <ul id="legend" class="legend" aria-label="Growth stages"></ul>
+        <p class="hint">Keys 1-8 pick a hotbar item. E eats.<br>Watered plants grow in real time (3 min for level-1
+          crops).<br>Sleeping refills energy.</p>
+      </section>
+
+      <!-- [Stack] — Undo — the list shows the newest actions from the ActionStack; Undo itself is the top-bar button. -->
+      <section id="panel-history" class="panel float-panel" aria-label="Today's actions" hidden>
+        <h2 class="tag">Today's Actions (<span id="history-count">0</span>)</h2>
+        <ul id="history-list" class="history-list"></ul>
+        <!-- [Hash table] — Plant lookup — read-only numbers about the plant index (size, buckets, load factor, collision buckets). -->
+        <details id="hash-details" class="hash-details">
+          <summary>Hash Index Details</summary>
+          <dl class="hash-stats">
+            <dt>Planted tiles (entries)</dt>
+            <dd id="hash-size">0</dd>
+            <dt>Buckets</dt>
+            <dd id="hash-buckets">16</dd>
+            <dt>Load factor</dt>
+            <dd id="hash-load">0.00</dd>
+            <dt>Buckets with 2+ entries</dt>
+            <dd id="hash-collisions">0</dd>
+          </dl>
+          <p class="hint">A hash table remembers which tiles hold a plant. The garden grid is still the real record.</p>
+        </details>
+      </section>
+
+      <section id="panel-gardener" class="panel float-panel" aria-label="Your gardener" hidden>
+        <h2 class="tag">Your Gardener</h2>
+        <div class="gardener-head">
+          <div id="gardener-face"></div>
+          <div>
+            <p class="gardener-name" id="gardener-name"></p>
+            <p class="gardener-title" id="gardener-title"></p>
+          </div>
+        </div>
+      </section>
+
+      <!-- [Tree + BST] — Crop Guide — tabs: By Garden (CropTree), A-Z (CropBST inorder), Level (BFS), Tree View (traversals), Rankings (Merge Sort). -->
+      <section id="panel-crops" class="panel float-panel float-panel--crops" aria-label="Crop Guide" hidden>
+        <h2 class="tag">🌱 Crop Guide</h2>
+
+        <form id="crop-search-form" class="crop-search" role="search" autocomplete="off">
+          <label class="sr-only" for="crop-search">Search for a crop by name</label>
+          <input id="crop-search" class="crop-search-input" type="search" placeholder="Search a crop..." maxlength="30">
+          <button class="btn btn--sm" type="submit">Find</button>
+        </form>
+
+        <div id="crop-detail" class="crop-detail" aria-live="polite" hidden></div>
+
+        <div class="crop-tabs" role="tablist" aria-label="Crop Guide views">
+          <button id="crop-tab-garden" class="btn btn--sm" type="button" role="tab" aria-selected="true"
+            aria-controls="crop-view-garden">By Garden</button>
+          <button id="crop-tab-az" class="btn btn--sm" type="button" role="tab" aria-selected="false"
+            aria-controls="crop-view-az">A-Z Catalog</button>
+          <button id="crop-tab-level" class="btn btn--sm" type="button" role="tab" aria-selected="false"
+            aria-controls="crop-view-level">Level View</button>
+          <button id="crop-tab-tree" class="btn btn--sm" type="button" role="tab" aria-selected="false"
+            aria-controls="crop-view-tree">Tree View</button>
+          <button id="crop-tab-rank" class="btn btn--sm" type="button" role="tab" aria-selected="false"
+            aria-controls="crop-view-rank">Rankings</button>
+        </div>
+        <div id="crop-view-garden" class="crop-view" role="tabpanel" aria-labelledby="crop-tab-garden"></div>
+        <div id="crop-view-az" class="crop-view" role="tabpanel" aria-labelledby="crop-tab-az" hidden></div>
+        <div id="crop-view-level" class="crop-view" role="tabpanel" aria-labelledby="crop-tab-level" hidden></div>
+        <!-- [Merge Sort] — Seasonal Rankings — ranks crops inside ONE season; script.js fills the table body. -->
+        <div id="crop-view-rank" class="crop-view crop-view--rank" role="tabpanel" aria-labelledby="crop-tab-rank"
+          hidden>
+          <div class="rank-controls">
+            <label class="rank-label" for="rank-season">Season</label>
+            <select id="rank-season" class="harvest-select"></select>
+            <label class="rank-label" for="rank-metric">Rank by</label>
+            <select id="rank-metric" class="harvest-select">
+              <option value="value" selected>Harvest value</option>
+              <option value="quantity">Quantity harvested</option>
+            </select>
+          </div>
+          <p id="rank-status" class="rank-status" role="status" aria-live="polite"></p>
+          <p id="rank-partial" class="hint rank-partial" hidden></p>
+          <p id="rank-empty" class="hint"></p>
+          <table id="rank-table" class="harvest-table" hidden>
+            <caption class="sr-only">Crops ranked within the chosen season, highest first</caption>
+            <thead>
+              <tr>
+                <th scope="col" class="num">#</th>
+                <th scope="col">Crop</th>
+                <th scope="col" class="num">Qty</th>
+                <th scope="col" class="num">Value</th>
+              </tr>
+            </thead>
+            <tbody id="rank-body"></tbody>
+          </table>
+          <p class="hint">Ranks crops inside one season only. Value is what each harvest was worth when you made it, so
+            later price changes don't change it.</p>
+        </div>
+        <!-- [Tree traversal] — Crop Guide Tree View — each button runs one traversal and animates the visiting order on the diagrams below. -->
+        <div id="crop-view-tree" class="crop-view crop-view--tree" role="tabpanel" aria-labelledby="crop-tab-tree"
+          hidden>
+          <div class="tree-buttons" role="group" aria-label="Traversals">
+            <button class="btn btn--sm" type="button" data-traversal="preorder" aria-pressed="false">Preorder
+              DFS</button>
+            <button class="btn btn--sm" type="button" data-traversal="inorder" aria-pressed="false">Inorder DFS</button>
+            <button class="btn btn--sm" type="button" data-traversal="postorder" aria-pressed="false">Postorder
+              DFS</button>
+            <button class="btn btn--sm" type="button" data-traversal="bfs" aria-pressed="false">BFS Level-Order</button>
+          </div>
+          <p id="tree-status" class="tree-status" role="status" aria-live="polite">Pick a traversal to watch it visit
+            the nodes.</p>
+
+          <section class="tree-section" aria-label="CropTree diagram">
+            <h3 class="crop-level-label">CropTree · by garden</h3>
+            <div class="tree-scroll">
+              <div id="tree-diagram-crop" class="tree-diagram"></div>
+            </div>
+            <p class="tree-order-title">Visiting order</p>
+            <ol id="tree-order-crop" class="tree-order" aria-label="CropTree visiting order"></ol>
+          </section>
+
+          <section class="tree-section" aria-label="CropBST diagram">
+            <h3 class="crop-level-label">CropBST · alphabetical</h3>
+            <div class="tree-scroll">
+              <div id="tree-diagram-bst" class="tree-diagram"></div>
+            </div>
+            <p class="tree-order-title">Visiting order</p>
+            <ol id="tree-order-bst" class="tree-order" aria-label="CropBST visiting order"></ol>
+          </section>
+        </div>
+      </section>
+    </header>
+
+    <!-- ========== The garden / market fills all the remaining space ========== -->
+    <section class="stage" aria-label="Garden">
+      <div id="garden-scene" class="garden-scene" data-plot="Flowers">
+        <!-- [Canvas rendering] — Garden scene — pixel-art.js drawGarden() paints the background here. -->
+        <canvas id="scene-canvas" class="scene-canvas" aria-hidden="true"></canvas>
+        <div id="scene-fx" class="scene-fx" aria-hidden="true"></div>
+
+        <!-- Raised wooden bed holding the 10x10 grid -->
+        <div id="bed" class="bed" data-mode="garden">
+
+          <!-- The place-name sign on the entrance fence -->
+          <div class="entrance-sign">
+            <strong id="place-name" class="entrance-name">Flower Meadow</strong>
+            <small id="place-info" class="entrance-info"></small>
+          </div>
+
+          <div class="grid-frame">
+            <div id="grid" class="grid"></div>
+            <i class="post post--tl"></i><i class="post post--tr"></i>
+            <i class="post post--bl"></i><i class="post post--br"></i>
+          </div>
+
+          <!-- The market stall: shown instead of the soil when you are in Market Square -->
+          <div id="shop" class="shop" aria-label="Market stall">
+            <div class="shop-head">
+              <b id="shop-title">🛒 Seed Stall</b>
+              <span class="shop-coins"><span data-icon="coin"></span><b id="shop-coins">0</b></span>
+            </div>
+            <div id="shop-tabs" class="shop-tabs">
+              <button class="btn btn--sm" type="button" data-tab="buy" aria-pressed="true">Buy seeds</button>
+              <button class="btn btn--sm" type="button" data-tab="sell" aria-pressed="false">Sell</button>
+            </div>
+            <ul id="shop-list" class="shop-list"></ul>
+            <div id="shop-foot" class="shop-foot"></div>
+          </div>
+        </div>
+
+        <!-- Your gardener and the place's guardian, standing in the garden -->
+        <div class="scene-cast">
+          <div class="cast">
+            <div class="cast-body"><img id="scene-gardener" class="gardener-sprite" alt="" draggable="false"></div>
+            <span id="cast-gardener-name" class="cast-name"></span>
+          </div>
+          <div class="cast">
+            <button id="cast-keeper" class="cast-body cast-button" type="button" aria-haspopup="dialog"
+              aria-expanded="false" aria-controls="character-popover">
+              <img id="scene-keeper" class="keeper-sprite" alt="" draggable="false">
+            </button>
+            <span id="cast-keeper-name" class="cast-name"></span>
+          </div>
+        </div>
+
+        <!-- Click the guardian to open this: name, role and a greeting -->
+        <div id="character-popover" class="character-popover" role="dialog" aria-label="Guardian" hidden>
+          <div class="character-popover-body">
+            <small id="character-popover-place" class="character-popover-place"></small>
+            <b id="character-popover-name" class="character-popover-name"></b>
+            <p id="character-popover-text" class="character-popover-text"></p>
+          </div>
+          <button id="character-popover-close" class="btn btn--sm character-popover-close" type="button"
+            aria-label="Close">✕</button>
+          <i class="character-popover-arrow" aria-hidden="true"></i>
+        </div>
+      </div>
+    </section>
+
+    <!-- ========== Hotbar: the first 8 backpack slots ========== -->
+    <footer class="bottombar">
+      <p id="cell-info" class="cell-info">Hover a tile to see its flat index.</p>
+      <div class="panel hotbar-wrap">
+        <div id="hotbar" class="hotbar" role="toolbar" aria-label="Hotbar"></div>
+      </div>
+    </footer>
+
+    <noscript>This game needs JavaScript enabled.</noscript>
+  </main>
+
+
+  <!-- ========== World map ========== -->
+  <!-- [Graph + BFS] — World map — a canvas picture with the place buttons added by script.js; travel follows the BFS route. -->
+  <dialog id="map-dialog" class="modal modal--map" aria-label="World map">
+    <div class="modal-head">
+      <h2 class="tag">🗺 World Map</h2>
+      <button id="map-close" class="btn btn--sm" type="button">Close ✕</button>
+    </div>
+    <div class="map-frame">
+      <canvas id="map-canvas" class="map-canvas" aria-hidden="true"></canvas>
+      <div id="map-nodes" class="map-nodes"></div>
+    </div>
+    <p id="map-hint" class="map-hint">Click a place to walk there.</p>
+  </dialog>
+
+  <!-- ========== Backpack ========== -->
+  <dialog id="pack-dialog" class="modal modal--pack" aria-label="Backpack">
+    <div class="modal-head">
+      <h2 class="tag">🎒 Backpack <span id="pack-count"></span></h2>
+      <button id="pack-close" class="btn btn--sm" type="button">Close ✕</button>
+    </div>
+    <div id="pack-grid" class="pack-grid"></div>
+    <div id="pack-detail" class="pack-detail"></div>
+
+    <!-- Display-only sorted view. Sorting a COPY; the slots above are never reordered. -->
+    <details id="harvest-inv" class="harvest-inv">
+      <summary id="harvest-summary">Harvest Inventory (0 crops)</summary>
+      <div class="harvest-controls">
+        <label class="sr-only" for="harvest-sort-key">Sort harvested crops by</label>
+        <select id="harvest-sort-key" class="harvest-select">
+          <option value="unit">Unit sell value</option>
+          <option value="total">Total stack value</option>
+          <option value="quantity">Quantity</option>
+          <option value="name" selected>Name</option>
+          <option value="growth">Growth duration</option>
+        </select>
+        <button id="harvest-sort-dir" class="btn btn--sm" type="button">↑ Ascending</button>
+      </div>
+      <p id="harvest-empty" class="hint">No harvested crops yet. Harvest something and it shows up here.</p>
+      <table id="harvest-table" class="harvest-table" hidden>
+        <thead>
+          <tr>
+            <th scope="col">Crop</th>
+            <th scope="col" class="num">Qty</th>
+            <th scope="col" class="num">Unit</th>
+            <th scope="col" class="num">Total</th>
+            <th scope="col" class="num">Grows</th>
+          </tr>
+        </thead>
+        <tbody id="harvest-body"></tbody>
+      </table>
+    </details>
+  </dialog>
+
+  <!-- Small, short-lived feedback messages (never block clicks) -->
+  <div id="toast-region" class="toast-region" aria-hidden="true"></div>
+
+  <!-- Order matters: art first, then game logic -->
+  <script src="pixel-art.js"></script>
+  <script src="script.js"></script>
+</body>
+
+</html>
